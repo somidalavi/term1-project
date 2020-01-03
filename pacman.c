@@ -1,4 +1,3 @@
-#include "resource.h"
 #include <windows.h>
 #include <string.h>
 #include <stdio.h>
@@ -7,7 +6,7 @@
 #include <unistd.h>
 #include <ctype.h>
 
-#define IDT_TIMER1 101
+
 #define MAX_T_SIZE 16
 #define MAX_ROW 4
 #define MAX_COL 4
@@ -19,16 +18,22 @@
 #define NORMALC '1'
 #define PRIZEC '*'
 
-
+const int CYCLELENGTH = 10;
+const int PACMANH = 50;
+const int PACMANW = 50;
 const int n = 4,m = 4;
 const int totalSize = 16;
-const int nCell[4] = {-1,1,-4,4};
-const char comtochar[4] = {'l','r','u','d'};
+const int nCell[4] = {1,4,-1,-4};
+const char comtochar[4] = {'r','d','l','u'};
+const int dx[4] = {1,0,-1,0};
+const int dy[4] = {0,1,0,-1};
 
 int dp[1 << MAX_T_SIZE][MAX_T_SIZE];
 int mopt[1 << MAX_T_SIZE][MAX_T_SIZE];
 struct {
 	int pR,pC;
+	int pX,pY;
+	int curCycle;
 	int state[MAX_ROW][MAX_COL];
 	int coms[MAX_TOT_SIZE];
 	int comssize,curcom;
@@ -104,7 +109,6 @@ void preproc(){
 				int newnum = curnum + nCell[c];
 				int ci = getrow(newnum),cj = getcol(newnum);
 				if (newnum >= 0 && newnum < 16 && game.state[i][j] != -1 && game.state[ci][cj] != -1 && abs(ci - i) + abs(cj - j) == 1){
-				//	printf("%d %d\n",curnum,newnum);
 					dist[curnum][newnum] = 1;
 					dist[newnum][curnum] = 1;
 				}
@@ -179,150 +183,21 @@ void preproc(){
 		curP = newP;
 	}
 	// final path calculated
-//	for (int i = 0;i < game.comssize;i++){
-//		printf("%c ",comtochar[game.coms[i]]);
-//	}
-//	printf("\n");
 }
 void update(){
-	int curnum = getnum(game.pR,game.pC);
-	if (game.curcom < game.comssize)
-		curnum += nCell[game.coms[game.curcom++]];
-	game.pR = getrow(curnum);
-	game.pC = getcol(curnum);
-	if (game.state[game.pR][game.pC] == 1) game.state[game.pR][game.pC] = 0;
-}
-void draw(HWND hwnd){
-	PAINTSTRUCT ps;
-	HDC hdc = BeginPaint(hwnd, &ps);
-	int cnt[4][4] = {};
-	printf("%d %d\n",game.pR,game.pC);
-	for (int i = 0;i < 600;i++){
-		for (int j = 0 ;j < 800;j++){
-			int ci = i / 150,cj = j / 200;
-			cnt[ci][cj]++;
-			if (cnt[ci][cj] > 100) continue;
-			if (game.pR == ci && cj == game.pC){
-                SetPixel(hdc,j,i,RGB(255,0,0));
-			}
-			else if (game.state[ci][cj] == 1)
-				SetPixel(hdc, j, i, RGB(0, 255, 0));
-			else if (game.state[ci][cj] == 0)
-				SetPixel(hdc, j, i, RGB(0, 0, 255));
-			else
-				SetPixel(hdc, j, i, RGB(100, 100, 100));
-		}
-	}
-	EndPaint(hwnd, &ps);
-    for (int i = 0;i < n;i++){
-		for (int j = 0;j < m;j++){
-			if (i == game.pR && j == game.pC) putchar('0');
-			else if (game.state[i][j] == -1) putchar('#');
-			else if (game.state[i][j] == 0) putchar('1');
-			else putchar('*');
-		}
-		putchar('\n');
+	if (game.curcom >= game.comssize) return ;
+	game.curCycle++;
+	game.pX += dx[game.coms[game.curcom]] * PACMANW / CYCLELENGTH;
+	game.pY += dy[game.coms[game.curcom]] * PACMANH / CYCLELENGTH;
+	if (game.curCycle == CYCLELENGTH){
+		
+		int curnum = getnum(game.pR,game.pC);
+		curnum += nCell[game.coms[game.curcom]];
+		game.pR = getrow(curnum);
+		game.pC = getcol(curnum);
+		game.curcom++;
+		game.curCycle = 0;
+		if (game.state[game.pR][game.pC] == 1) game.state[game.pR][game.pC] = 0;
 	}
 }
 
-/*int main(){
-	preproc();
-	while(1){
-		system("cls");
-		draw();
-		fflush(stdout);
-		update();
-		Sleep(200);
-	}
-}
-
-*/
-const char g_szClassName[] = "myWindowClass";
-RECT rect = {0,0,800,600};
-const RECT *drawrect = &rect;
-HBITMAP g_hbmBall = NULL;
-
-LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-	switch(msg)
-	{
-		case WM_TIMER:
-			update();
-			 InvalidateRect(hwnd, NULL, TRUE);
-            RedrawWindow(hwnd,drawrect,NULL,RDW_INTERNALPAINT);
-			break;
-		case WM_CLOSE:
-			DestroyWindow(hwnd);
-		break;
-		case WM_PAINT:
-		{
-            printf("here\n");
-			draw(hwnd);
-		}
-		break;
-		case WM_DESTROY:
-			DeleteObject(g_hbmBall);
-			PostQuitMessage(0);
-		break;
-		default:
-			return DefWindowProc(hwnd, msg, wParam, lParam);
-	}
-	return 0;
-}
-
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
-	LPSTR lpCmdLine, int nCmdShow)
-{
-	preproc();
-	WNDCLASSEX wc;
-	HWND hwnd;
-	MSG Msg;
-
-	wc.cbSize		 = sizeof(WNDCLASSEX);
-	wc.style		 = 0;
-	wc.lpfnWndProc	 = WndProc;
-	wc.cbClsExtra	 = 0;
-	wc.cbWndExtra	 = 0;
-	wc.hInstance	 = hInstance;
-	wc.hIcon		 = LoadIcon(NULL, IDI_APPLICATION);
-	wc.hCursor		 = LoadCursor(NULL, IDC_ARROW);
-	wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
-	wc.lpszMenuName  = NULL;
-	wc.lpszClassName = g_szClassName;
-	wc.hIconSm		 = LoadIcon(NULL, IDI_APPLICATION);
-
-	if(!RegisterClassEx(&wc))
-	{
-		MessageBox(NULL, "Window Registration Failed!", "Error!",
-			MB_ICONEXCLAMATION | MB_OK);
-		return 0;
-	}
-
-	hwnd = CreateWindowEx(
-		WS_EX_CLIENTEDGE,
-		g_szClassName,
-		"A Bitmap Program",
-		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT, 800,600,
-		NULL, NULL, hInstance, NULL);
-	SetTimer(hwnd,
-		IDT_TIMER1,
-		1000,
-		(TIMERPROC) NULL);
-	if(hwnd == NULL)
-	{
-		MessageBox(NULL, "Window Creation Failed!", "Error!",
-			MB_ICONEXCLAMATION | MB_OK);
-		return 0;
-	}
-
-	ShowWindow(hwnd, nCmdShow);
-	UpdateWindow(hwnd);
-
-	while(GetMessage(&Msg, NULL, 0, 0) > 0)
-	{
-		TranslateMessage(&Msg);
-		DispatchMessage(&Msg);
-	}
-	return Msg.wParam;
-}

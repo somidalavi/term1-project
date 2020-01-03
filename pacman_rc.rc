@@ -1,0 +1,5 @@
+#include "resource.h"
+
+IDB_PACMAN	BITMAP "pacman.bmp"
+IDB_FRUIT BITMAP "fruit.bmp"
+IDB_WALL BITMAP "wall.bmp"
