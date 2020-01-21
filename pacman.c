@@ -74,6 +74,8 @@ void preproc(){
 	FILE *tfile = fopen(fpath,"r");
 	char currow[MAX_COL + 10];
 	for (int i = 0;i < n;i++){
+		for (int j = 0;j < MAX_COL + 10;j++)
+			currow[j] = WALLC;
 		fgets(currow,10,tfile);
 		for (int j = 0;j < m;j++){
 			switch(currow[j]){
@@ -91,6 +93,8 @@ void preproc(){
 					game.pR = i;
 					game.pC = j;
 					break;
+				default:
+					game.state[i][j] = -1;
 			}
 				//printf("%d ",game.state[i][j]);
 		}
