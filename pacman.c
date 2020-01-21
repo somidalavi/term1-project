@@ -91,7 +91,9 @@ void preproc(){
 				case PACMANC:
 					game.state[i][j] = 0;
 					game.pR = i;
+					game.pX = i * PACMANW;
 					game.pC = j;
+					game.pY = j * PACMANH;
 					break;
 				default:
 					game.state[i][j] = -1;
@@ -204,4 +206,3 @@ void update(){
 		if (game.state[game.pR][game.pC] == 1) game.state[game.pR][game.pC] = 0;
 	}
 }
-
